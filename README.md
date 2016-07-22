@@ -1,0 +1,2 @@
+# gofour
+Terminal Connect Four
