@@ -9,6 +9,7 @@ import (
 	"github.com/creack/gofour/runtime"
 
 	// Load runtimes.
+	_ "github.com/creack/gofour/runtime/server"
 	_ "github.com/creack/gofour/runtime/terminal"
 	_ "github.com/creack/gofour/runtime/text"
 )

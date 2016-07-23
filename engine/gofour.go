@@ -55,6 +55,11 @@ func NewConnectFour(columns, rows, nPlayers, nWin int) (*Four, error) {
 	}, nil
 }
 
+// Reset restarts the game.
+func (f *Four) Reset() (*Four, error) {
+	return NewConnectFour(f.Columns, f.Rows, f.nPlayers, f.nWin)
+}
+
 // State return the state of the grid at the x/y position.
 func (f *Four) State(x, y int) State {
 	return f.content[x][y]

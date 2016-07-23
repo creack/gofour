@@ -17,26 +17,27 @@ func init() {
 	runtime.Runtimes["text"] = &Runtime{}
 }
 
-// Dump displays the state of the grid on stdout.
-func Dump(f *engine.Four) {
-	fmt.Println()
-	w := tabwriter.NewWriter(os.Stdout, 4, 4, 4, ' ', 0)
-	for i := 0; i < f.Columns; i++ {
-		fmt.Fprintf(w, "\x1b[1;37m%d\x1b[0m\t", i+1)
-	}
+// Dump displays the state of the grid on the given writer.
+func Dump(w io.Writer, f *engine.Four) {
 	fmt.Fprintln(w)
+
+	tabW := tabwriter.NewWriter(w, 4, 4, 4, ' ', 0)
 	for i := 0; i < f.Columns; i++ {
-		fmt.Fprint(w, "\x1b[1;37m---\x1b[0m\t")
+		fmt.Fprintf(tabW, "\x1b[1;37m%d\x1b[0m\t", i+1)
 	}
-	fmt.Fprintln(w)
+	fmt.Fprintln(tabW)
+	for i := 0; i < f.Columns; i++ {
+		fmt.Fprint(tabW, "\x1b[1;37m---\x1b[0m\t")
+	}
+	fmt.Fprintln(tabW)
 	for i := 0; i < f.Rows; i++ {
 		for j := 0; j < f.Columns; j++ {
-			fmt.Fprintf(w, "%s\t", f.State(i, j))
+			fmt.Fprintf(tabW, "%s\t", f.State(i, j))
 		}
-		fmt.Fprintf(w, "\n")
+		fmt.Fprintf(tabW, "\n")
 	}
-	_ = w.Flush()
-	fmt.Println()
+	_ = tabW.Flush()
+	fmt.Fprintln(w)
 }
 
 // Runtime is a basic text based client for connect four.
@@ -47,15 +48,15 @@ type Runtime struct {
 	w        *io.PipeWriter
 }
 
-// Init setups up the connect four game.
-func (tf *Runtime) Init(four *engine.Four) error {
-	tf.four = four
-	tf.stopChan = make(chan struct{})
+// Init setup the connect four game.
+func (r *Runtime) Init(four *engine.Four) error {
+	r.four = four
+	r.stopChan = make(chan struct{})
 
 	// Setup the pipe to allow to interrupt scanf.
-	tf.r, tf.w = io.Pipe()
+	r.r, r.w = io.Pipe()
 	go func() {
-		_, _ = io.Copy(tf.w, os.Stdin)
+		_, _ = io.Copy(r.w, os.Stdin)
 	}()
 
 	// Watch for signals so we are not stuck in the game forever.
@@ -66,26 +67,26 @@ func (tf *Runtime) Init(four *engine.Four) error {
 
 		signal.Stop(ch)
 		close(ch)
-		_ = tf.Close()
+		_ = r.Close()
 	}()
 
 	return nil
 }
 
 // Run starts the game loop.
-func (tf *Runtime) Run() error {
+func (r *Runtime) Run() error {
 	for i := 0; ; i++ {
 	start:
 		select {
-		case <-tf.stopChan:
+		case <-r.stopChan:
 			return nil
 		default:
 		}
-		Dump(tf.four)
-		fmt.Printf("Player %d (%s) turn, select column:\n", tf.four.CurPlayer, tf.four.CurPlayer)
+		Dump(os.Stdout, r.four)
+		fmt.Printf("Player %d (%s) turn, select column:\n", r.four.CurPlayer, r.four.CurPlayer)
 
 		var x int
-		if _, err := fmt.Fscanf(tf.r, "%d", &x); err != nil {
+		if _, err := fmt.Fscanf(r.r, "%d", &x); err != nil {
 			if err == io.EOF {
 				break
 			}
@@ -98,7 +99,7 @@ func (tf *Runtime) Run() error {
 			goto start
 		}
 
-		ret, err := tf.four.PlayerMove(x)
+		ret, err := r.four.PlayerMove(x)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%s\n", err)
 			if err := errors.Cause(err); err == engine.ErrInvalidMove {
@@ -107,7 +108,7 @@ func (tf *Runtime) Run() error {
 			return err
 		}
 		if ret != engine.Empty {
-			Dump(tf.four)
+			Dump(os.Stdout, r.four)
 			if ret == engine.Stale {
 				fmt.Print("Stale, nobody wins!\n")
 			} else {
@@ -120,12 +121,12 @@ func (tf *Runtime) Run() error {
 }
 
 // Close is a no op.
-func (tf *Runtime) Close() error {
+func (r *Runtime) Close() error {
 	select {
-	case <-tf.stopChan:
+	case <-r.stopChan:
 	default:
-		_ = tf.w.CloseWithError(io.EOF)
-		close(tf.stopChan)
+		_ = r.w.CloseWithError(io.EOF)
+		close(r.stopChan)
 	}
 	return nil
 }
