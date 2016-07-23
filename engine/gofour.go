@@ -11,18 +11,6 @@ var (
 	ErrInvalidMove = errors.New("invalid move")
 )
 
-// initPlayerState is a helper to init the map for the win check.
-// TODO: get rid of this.
-func initPlayerState() map[State]int {
-	ret := map[State]int{
-		Empty: 0,
-	}
-	for _, elem := range AvailablePlayers {
-		ret[elem] = 0
-	}
-	return ret
-}
-
 // Four holds the game state.
 type Four struct {
 	content  [][]State
@@ -38,7 +26,7 @@ type Four struct {
 }
 
 // NewConnectFour instantiates a new game.
-// TODO: use a single dimentional slice.
+// TODO: use a single dimension slice.
 func NewConnectFour(columns, rows, nPlayers, nWin int) (*Four, error) {
 	if columns < 2 || rows < 2 {
 		return nil, fmt.Errorf("invalid grid size: %d/%d", columns, rows)
@@ -114,16 +102,6 @@ func (f *Four) PlayerMove(col int) (State, error) {
 
 	return f.Compute(), nil
 }
-
-// // Run starts the game with the given runtime.
-// func (f *Four) Run(runtime runtime.FourRuntime) error {
-// 	if err := runtime.Init(f); err != nil {
-// 		return errors.Wrap(err, "error initializing the runtime")
-// 	}
-// 	defer func() { _ = runtime.Close() }()
-
-// 	return runtime.Run()
-// }
 
 // compute goes point by point and tries the nWin in every directions.
 func (f *Four) compute() State {
