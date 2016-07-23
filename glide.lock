@@ -1,5 +1,5 @@
-hash: 17169258b9ef0d650c95fc5febf8ec64f0b3afcb3dfd221c1ebb31b5883d8fbf
-updated: 2016-07-23T10:39:12.616426594-05:00
+hash: 4d0297e8547a5a05fdb0a68b6e68ebeafb08e8e43572dc900f6b6269bd884091
+updated: 2016-07-23T12:02:12.774109092-05:00
 imports:
 - name: github.com/creack/gogrid
   version: 1257018a65eb430a34883b9e432c503abeff43ff
