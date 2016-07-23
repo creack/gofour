@@ -1,0 +1,12 @@
+hash: 17169258b9ef0d650c95fc5febf8ec64f0b3afcb3dfd221c1ebb31b5883d8fbf
+updated: 2016-07-23T10:39:12.616426594-05:00
+imports:
+- name: github.com/creack/gogrid
+  version: 1257018a65eb430a34883b9e432c503abeff43ff
+- name: github.com/mattn/go-runewidth
+  version: d6bea18f789704b5f83375793155289da36a3c7f
+- name: github.com/nsf/termbox-go
+  version: 0723e7c3d0a317dea811f0fbe4d6edd81908c971
+- name: github.com/pkg/errors
+  version: 01fa4104b9c248c8945d14d9f128454d5b28d595
+testImports: []

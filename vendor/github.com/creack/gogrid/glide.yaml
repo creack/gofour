@@ -1,0 +1,5 @@
+package: github.com/creack/gogrid
+import:
+- package: github.com/nsf/termbox-go
+- package: github.com/pkg/errors
+  version: ~0.7.0
