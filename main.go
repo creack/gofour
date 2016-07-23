@@ -6,322 +6,130 @@ import (
 	"log"
 	"os"
 	"text/tabwriter"
+	"time"
+
+	"github.com/creack/gogrid"
+	termbox "github.com/nsf/termbox-go"
+	"github.com/pkg/errors"
 )
 
-// GridState is the enum type for the grid state.
-type GridState int
-
-// GridState is the enum values
-const (
-	Empty = iota
-	Red
-	Yellow
-	Green
-	Magenta
-	Blue
-	Cyan
-	Black
-)
-
-// AvailablePlayers is the list of available player colors.
-var AvailablePlayers = []GridState{Red, Yellow, Green, Magenta, Blue, Cyan, Black}
-
-func (s GridState) String() string {
-	switch s {
-	case Red:
-		return fmt.Sprintf("\x1b[1;31m%c\x1b[0m", 'x')
-	case Yellow:
-		return fmt.Sprintf("\x1b[1;33m%c\x1b[0m", 'x')
-	case Green:
-		return fmt.Sprintf("\x1b[1;32m%c\x1b[0m", 'x')
-	case Blue:
-		return fmt.Sprintf("\x1b[1;34m%c\x1b[0m", 'x')
-	case Magenta:
-		return fmt.Sprintf("\x1b[1;35m%c\x1b[0m", 'x')
-	case Cyan:
-		return fmt.Sprintf("\x1b[1;36m%c\x1b[0m", 'x')
-	case Black:
-		return fmt.Sprintf("\x1b[1;30m%c\x1b[0m", 'x')
-	default:
-		return fmt.Sprintf("\x1b[1;37m%c\x1b[0m", 'x')
-	}
+// FourRuntime is the interface to run connect four.
+type FourRuntime interface {
+	Init(*Four) error
+	Run() error
+	Close() error
 }
 
-// initPlayerState is a helper to init the map for the win check.
-// TODO: get tid of this.
-func initPlayerState() map[GridState]int {
-	ret := map[GridState]int{
-		Empty: 0,
-	}
-	for _, elem := range AvailablePlayers {
-		ret[elem] = 0
-	}
-	return ret
+// TerminalFour is a termcap player for connect four.
+type TerminalFour struct {
+	four *Four
+	grid *gogrid.Grid
 }
 
-// Grid holds the game state.
-type Grid struct {
-	content  [][]GridState
-	nWin     int
-	nPlayers int
+// Run .
+func (f *TerminalFour) Run() error {
+	// First draw.
+	if err := f.grid.RedrawAll(); err != nil {
+		return errors.Wrap(err, "error drawing grid")
+	}
+	// Start the runtime loop.
+	if err := f.grid.HandleKeyboard(); err != nil {
+		return errors.Wrap(err, "runtime error")
+	}
+	return nil
 }
 
-// NewGrid instantiates a new Grid.
-// TODO: use a single dimentional slice.
-func NewGrid(columns, rows, nPlayers, nWin int) (*Grid, error) {
-	if columns < 2 || rows < 2 {
-		return nil, fmt.Errorf("invalid grid size: %d/%d", columns, rows)
-	}
-	if nPlayers > len(AvailablePlayers) {
-		return nil, fmt.Errorf("too many players. Max: %d", len(AvailablePlayers))
-	}
-	if nWin < 2 {
-		return nil, fmt.Errorf("invalid win number: %d, minimum 2", nWin)
-	}
-	if columns < nWin && rows < nWin {
-		return nil, fmt.Errorf("grid too small for anyone to win")
-	}
-	content := make([][]GridState, columns)
-	for i := range content {
-		content[i] = make([]GridState, rows)
-	}
-	return &Grid{
-		content:  content,
-		nWin:     nWin,
-		nPlayers: nPlayers,
-	}, nil
-}
+// Init initialize the termcap grid.
+func (f *TerminalFour) Init(four *Four) error {
+	f.four = four
 
-// Dump displays the state of the grid on stdout.
-func (g *Grid) Dump() {
-	fmt.Println()
-	w := tabwriter.NewWriter(os.Stdout, 4, 4, 4, ' ', 0)
-	for i := range g.content[0] {
-		fmt.Fprintf(w, "\x1b[1;37m%d\x1b[0m\t", i+1)
+	g, err := gogrid.NewGrid(f.four.Rows, f.four.Columns)
+	if err != nil {
+		return errors.Wrap(err, "error initializing termcap grid")
 	}
-	fmt.Fprintln(w)
-	for range g.content[0] {
-		fmt.Fprint(w, "\x1b[1;37m---\x1b[0m\t")
-	}
-	fmt.Fprintln(w)
-	for _, lines := range g.content {
-		for _, state := range lines {
-			fmt.Fprintf(w, "%s\t", state)
-		}
-		fmt.Fprintf(w, "\n")
-	}
-	w.Flush()
-	fmt.Println()
-}
 
-// computeLines checks for nWin in a row in the lines.
-func (g *Grid) computeLines() GridState {
-	for _, line := range g.content {
-		playerState := initPlayerState()
-		prev := line[0]
+	cursorX := 0
+	end := false
 
-		for i := 0; i < len(line); i++ {
-			cur := line[i]
-			if prev != cur {
-				playerState[prev] = 0
-				playerState[cur] = 1
-			} else if playerState[cur]++; cur != Empty && playerState[cur] >= g.nWin {
-				return cur
-			}
-			prev = cur
+	g.HeaderHeight = 2
+	g.HeaderFct = func(g *gogrid.Grid) {
+		if !end {
+			// Display player info.
+			fmt.Printf("Player %d (%s) turn, select column (Enter or Space)\n", f.four.CurPlayer, f.four.CurPlayer)
+			// Set cursor to proper cell.
+			g.SetCursor(cursorX, 0)
 		}
 	}
-	return Empty
-}
-
-// computeColumns checks for nWin in a row in the columns.
-func (g *Grid) computeColumns() GridState {
-	for i := 0; i < len(g.content[0]); i++ {
-		playerState := initPlayerState()
-		prev := g.content[0][i]
-		for j := 0; j < len(g.content); j++ {
-			cur := g.content[j][i]
-			if prev != cur {
-				playerState[prev] = 0
-				playerState[cur] = 1
-			} else if playerState[cur]++; cur != Empty && playerState[cur] >= g.nWin {
-				return cur
-			}
-			prev = cur
+	leftHandler := func(*gogrid.Grid) {
+		if cursorX > 0 {
+			cursorX--
 		}
 	}
-	return Empty
-}
-
-// checkDiag1 checks from the starting x/y if we have nWin in a row.
-func (g *Grid) checkDiag1(x, y int) GridState {
-	playerState := initPlayerState()
-	prev := g.content[x][y]
-	for i := 0; i < g.nWin; i++ {
-		if x+i >= len(g.content) || y+i >= len(g.content[0]) {
-			return Empty
-		}
-		cur := g.content[x+i][y+i]
-		if prev != cur {
-			playerState[prev] = 0
-			playerState[cur] = 1
-		} else if playerState[cur]++; cur != Empty && playerState[cur] >= g.nWin {
-			return cur
-		}
-		prev = cur
-	}
-	return Empty
-}
-
-// checkDiag2 checks from the starting x/y if we have nWin in a row.
-func (g *Grid) checkDiag2(x, y int) GridState {
-	playerState := initPlayerState()
-	prev := g.content[x][y]
-	for i := 0; i < g.nWin; i++ {
-		if x-i < 0 || y-i < 0 {
-			return Empty
-		}
-		cur := g.content[x-i][y-i]
-		if prev != cur {
-			playerState[prev] = 0
-			playerState[cur] = 1
-		} else if playerState[cur]++; cur != Empty && playerState[cur] >= g.nWin {
-			return cur
-		}
-		prev = cur
-	}
-	return Empty
-}
-
-// checkDiag3 checks from the starting x/y if we have nWin in a row.
-func (g *Grid) checkDiag3(x, y int) GridState {
-	playerState := initPlayerState()
-	prev := g.content[x][y]
-	for i := 0; i < g.nWin; i++ {
-		if x-i < 0 || y+i >= len(g.content[0]) {
-			return Empty
-		}
-		cur := g.content[x-i][y+i]
-		if prev != cur {
-			playerState[prev] = 0
-			playerState[cur] = 1
-		} else if playerState[cur]++; cur != Empty && playerState[cur] >= g.nWin {
-			return cur
-		}
-		prev = cur
-	}
-	return Empty
-}
-
-// checkDiag4 checks from the starting x/y if we have nWin in a row.
-func (g *Grid) checkDiag4(x, y int) GridState {
-	playerState := initPlayerState()
-	prev := g.content[x][y]
-	for i := 0; i < g.nWin; i++ {
-		if x+i >= len(g.content) || y-i < 0 {
-			return Empty
-		}
-		cur := g.content[x+i][y-i]
-		if prev != cur {
-			playerState[prev] = 0
-			playerState[cur] = 1
-		} else if playerState[cur]++; cur != Empty && playerState[cur] >= g.nWin {
-			return cur
-		}
-		prev = cur
-	}
-	return Empty
-}
-
-// computeDiags goes point by point and tries the nWin diagonals.
-func (g *Grid) computeDiags() GridState {
-	for i := 0; i < len(g.content); i++ {
-		for j := 0; j < len(g.content[i]); j++ {
-			if ret := g.checkDiag1(i, j); ret != Empty {
-				return ret
-			}
-			if ret := g.checkDiag2(i, j); ret != Empty {
-				return ret
-			}
-			if ret := g.checkDiag3(i, j); ret != Empty {
-				return ret
-			}
-			if ret := g.checkDiag4(i, j); ret != Empty {
-				return ret
-			}
+	rightHandler := func(*gogrid.Grid) {
+		if cursorX < g.Width-1 {
+			cursorX++
 		}
 	}
-	return Empty
-}
-
-// Compute processes the current state and checks if
-// one of the player won.
-func (g *Grid) Compute() GridState {
-	// nWin in a line.
-	if ret := g.computeLines(); ret != Empty {
-		return ret
-	}
-	// nWin in a column.
-	if ret := g.computeColumns(); ret != Empty {
-		return ret
-	}
-
-	// nWin in a diagonal.
-	if ret := g.computeDiags(); ret != Empty {
-		return ret
-	}
-
-	return Empty
-}
-
-// Stale checks if the grid is complete and the game is finished.
-func (g *Grid) Stale() bool {
-	for _, state := range g.content[0] {
-		if state == Empty {
-			return false
-		}
-	}
-	return true
-}
-
-// Run starts the game.
-func (g *Grid) Run() {
-	playerState := AvailablePlayers[:g.nPlayers]
-	for i := 0; ; i++ {
-	start:
-		g.Dump()
-		fmt.Printf("Player %d (%s) turn, select column:\n", playerState[i%g.nPlayers], playerState[i%g.nPlayers])
-		var x int
-		fmt.Scanf("%d", &x)
-
-		// Validate user input.
-		// Les than 0, too big or column already full.
-		if x <= 0 || x >= len(g.content[0])+1 || g.content[0][x-1] != 0 {
-			fmt.Fprint(os.Stderr, "Invalid input\n")
-			goto start
+	toggleHandler := func(*gogrid.Grid) {
+		if end {
+			return
 		}
 
-		x-- // Back to 0 index.
+		g.ClearHeader()
+		ret, err := f.four.PlayerMove(cursorX)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%s\n", err)
+			g.SetCursor(0, 0)
+			return
+		}
 
 		// Make it fall as long as we are empty.
 		j := 0
-		for ; j < len(g.content); j++ {
-			if g.content[j][x] != Empty {
-				break
+		for ; j < f.four.ColumnCount(cursorX); j++ {
+			g.SetCursor(cursorX, j)
+			fmt.Printf("%s", f.four.CurPlayer)
+			g.SetCursor(cursorX, 0)
+
+			time.Sleep(50 * time.Millisecond)
+
+			g.SetCursor(cursorX, j)
+			fmt.Print(" ")
+		}
+		g.SetCursor(cursorX, j)
+		fmt.Printf("%s", f.four.CurPlayer)
+
+		if ret != Empty {
+			g.ClearHeader()
+			if ret == Stale {
+				fmt.Print("\n Stale, nobody wins! (ESC to exit)")
+			} else {
+				fmt.Printf("\n Player %d (%s) won! (ESC to exit)", ret, ret)
 			}
-		}
-		g.content[j-1][x] = playerState[i%g.nPlayers]
-		if ret := g.Compute(); ret != Empty {
-			g.Dump()
-			fmt.Printf("Player %d (%s) won!\n", ret, ret)
-			return
-		}
-		if g.Stale() {
-			g.Dump()
-			fmt.Print("Stale, nobody wins!\n")
+			g.SetCursor(0, 0)
+			end = true
 			return
 		}
 	}
+
+	g.RegisterKeyHandler(termbox.KeyArrowLeft, leftHandler)
+	g.RegisterKeyHandler(termbox.KeyCtrlB, leftHandler)
+	g.RegisterKeyHandler(termbox.KeyArrowRight, rightHandler)
+	g.RegisterKeyHandler(termbox.KeyCtrlF, rightHandler)
+	g.RegisterKeyHandler(termbox.KeySpace, toggleHandler)
+	g.RegisterKeyHandler(termbox.KeyEnter, toggleHandler)
+	g.RegisterKeyHandler('q', func(g *gogrid.Grid) {
+		_ = g.Close()
+	})
+	g.RegisterKeyHandler(termbox.KeyCtrlL, func(g *gogrid.Grid) {
+		_ = g.RedrawAll()
+	})
+	f.grid = g
+	return nil
+}
+
+// Close cleans up the grid and terminal.
+func (f *TerminalFour) Close() error {
+	return f.grid.Close()
 }
 
 func main() {
@@ -330,11 +138,100 @@ func main() {
 		rows     = flag.Int("rows", 6, "number of rows")
 		nPlayers = flag.Int("p", 2, fmt.Sprintf("number of players. (max: %d)", len(AvailablePlayers)))
 		nWin     = flag.Int("w", 4, "number of consecutive color to win")
+		mode     = flag.String("m", "term", "Game mode. Values: [term, text]")
 	)
 	flag.Parse()
-	g, err := NewGrid(*cols, *rows, *nPlayers, *nWin)
+
+	four, err := NewConnectFour(*cols, *rows, *nPlayers, *nWin)
 	if err != nil {
 		log.Fatal(err)
 	}
-	g.Run()
+
+	var game FourRuntime
+	if *mode == "term" {
+		game = &TerminalFour{}
+	} else {
+		game = &TextFour{}
+	}
+	if err := game.Init(four); err != nil {
+		log.Fatal(err)
+	}
+	defer func() { _ = game.Close() }()
+
+	if err := game.Run(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+// Dump displays the state of the grid on stdout.
+func Dump(f *Four) {
+	fmt.Println()
+	w := tabwriter.NewWriter(os.Stdout, 4, 4, 4, ' ', 0)
+	for i := 0; i < f.Columns; i++ {
+		fmt.Fprintf(w, "\x1b[1;37m%d\x1b[0m\t", i+1)
+	}
+	fmt.Fprintln(w)
+	for i := 0; i < f.Columns; i++ {
+		fmt.Fprint(w, "\x1b[1;37m---\x1b[0m\t")
+	}
+	fmt.Fprintln(w)
+	for i := 0; i < f.Rows; i++ {
+		for j := 0; j < f.Columns; j++ {
+			fmt.Fprintf(w, "%s\t", f.State(i, j))
+		}
+		fmt.Fprintf(w, "\n")
+	}
+	w.Flush()
+	fmt.Println()
+}
+
+// TextFour is a basic text based client for connect four.
+type TextFour struct {
+	four *Four
+}
+
+// Init setups up the connect four game.
+func (tf *TextFour) Init(four *Four) error {
+	tf.four = four
+	return nil
+}
+
+// Run starts the game loop.
+func (tf *TextFour) Run() error {
+	for i := 0; ; i++ {
+	start:
+		Dump(tf.four)
+		fmt.Printf("Player %d (%s) turn, select column:\n", tf.four.CurPlayer, tf.four.CurPlayer)
+
+		var x int
+		fmt.Scanf("%d", &x)
+		x-- // Back to 0 index.
+
+		if x < 0 {
+			fmt.Fprint(os.Stderr, "invalid columns number\n")
+		}
+
+		ret, err := tf.four.PlayerMove(x)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%s\n", err)
+			if err := errors.Cause(err); err == ErrInvalidMove {
+				goto start
+			}
+			return err
+		}
+		if ret != Empty {
+			if ret == Stale {
+				fmt.Print("Stale, nobody wins!\n")
+			} else {
+				fmt.Printf("Player %d (%s) won!\n", ret, ret)
+			}
+			break
+		}
+	}
+	return nil
+}
+
+// Close is a no op.
+func (tf *TextFour) Close() error {
+	return nil
 }
