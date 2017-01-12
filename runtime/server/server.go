@@ -122,12 +122,17 @@ func (r *Runtime) AttachGame(w http.ResponseWriter, req *http.Request) error {
 	if err := encoder.Encode(game); err != nil {
 		return ehttp.NewError(http.StatusInternalServerError, err)
 	}
+	w.(http.Flusher).Flush()
 
 	// For each state change, resend the game.
+	if game.ActivityChan == nil {
+		return nil
+	}
 	for range game.ActivityChan {
 		if err := encoder.Encode(game); err != nil {
 			return ehttp.NewError(http.StatusInternalServerError, err)
 		}
+		w.(http.Flusher).Flush()
 	}
 	return nil
 }
@@ -180,6 +185,64 @@ func (r *Runtime) JoinGame(w http.ResponseWriter, req *http.Request) error {
 	return nil
 }
 
+// PlayMoveReq is the request to play a move in a game.
+type PlayMoveReq struct {
+	GameID     string
+	PlayerName string
+	Column     int
+}
+
+// PlayMove is the http endpoint to submit a move.
+func (r *Runtime) PlayMove(w http.ResponseWriter, req *http.Request) error {
+	if err := req.ParseForm(); err != nil {
+		return ehttp.NewError(http.StatusBadRequest, err)
+	}
+
+	data := PlayMoveReq{}
+	if err := (httpreq.ParsingMap{
+		{Field: "game_id", Fct: httpreq.ToString, Dest: &data.GameID},
+		{Field: "player_name", Fct: httpreq.ToString, Dest: &data.PlayerName},
+		{Field: "col", Fct: httpreq.ToInt, Dest: &data.Column},
+	}.Parse(req.Form)); err != nil {
+		return ehttp.NewError(http.StatusBadRequest, err)
+	}
+	if data.PlayerName == "" {
+		return ehttp.NewErrorf(http.StatusBadRequest, "missing player name")
+	}
+	if data.GameID == "" {
+		return ehttp.NewErrorf(http.StatusBadRequest, "missing game id")
+	}
+	if uuid.Parse(data.GameID) == nil {
+		return ehttp.NewErrorf(http.StatusBadRequest, "invalid game id format")
+	}
+	r.RLock()
+	game := r.games[data.GameID]
+	r.RUnlock()
+	if game == nil {
+		return ehttp.NewErrorf(http.StatusNotFound, "game '%s' not found", data.GameID)
+	}
+	if len(game.Players) != game.NPlayers {
+		return ehttp.NewErrorf(http.StatusForbidden, "game '%s' is not ready, waiting on players", data.GameID)
+	}
+	var player engine.State
+	for s, playerName := range game.Players {
+		if playerName == data.PlayerName {
+			player = s
+			break
+		}
+	}
+	if player == engine.Empty {
+		return ehttp.NewErrorf(http.StatusForbidden, "player not found in game '%s'", data.GameID)
+	}
+	if err := game.ValidateMove(player, data.Column); err != nil {
+		return ehttp.NewErrorf(http.StatusForbidden, "invalid move for player '%s' in game '%s': %s", data.PlayerName, data.GameID, err)
+	}
+	if _, err := game.PlayerMove(player, data.Column); err != nil {
+		return ehttp.NewErrorf(http.StatusInternalServerError, "an error occured while playing a move: %s", err)
+	}
+	return nil
+}
+
 // Init setup the connect four game.
 // Note: In server mode, we discard the init's given engine.
 func (r *Runtime) Init(four *engine.Four) error {
@@ -188,6 +251,8 @@ func (r *Runtime) Init(four *engine.Four) error {
 	ehttp.HandleFunc("/create", ehttp.HandlerFunc(r.CreateGame))
 	ehttp.HandleFunc("/join", ehttp.HandlerFunc(r.JoinGame))
 	ehttp.HandleFunc("/list", ehttp.HandlerFunc(r.ListGames))
+	ehttp.HandleFunc("/attach", ehttp.HandlerFunc(r.AttachGame))
+	ehttp.HandleFunc("/play", ehttp.HandlerFunc(r.PlayMove))
 	return nil
 }
 
