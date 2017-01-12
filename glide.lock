@@ -1,12 +1,20 @@
-hash: 4d0297e8547a5a05fdb0a68b6e68ebeafb08e8e43572dc900f6b6269bd884091
-updated: 2016-07-23T12:02:12.774109092-05:00
+hash: d502385bb9a13d24fc9ade9fe3ce555fa44268eab0cee8cfb10d150cb38b082c
+updated: 2017-01-12T16:45:49.525579433-06:00
 imports:
+- name: github.com/creack/ehttp
+  version: 8fb4dc85d935d3bfadcf517eeb3c8828bc8fe8b5
 - name: github.com/creack/gogrid
-  version: 1257018a65eb430a34883b9e432c503abeff43ff
+  version: 46abf5e1a15be9e1620fdcd8e7921825df43fd79
+- name: github.com/creack/httpreq
+  version: 42162ed1b98ddb5d821be514374fd68fcf37eb91
+- name: github.com/creack/uuid
+  version: ae7a2f39d9c3f4c022eb9f85a56453c33e868cc3
+- name: github.com/julienschmidt/httprouter
+  version: 8c199fb6259ffc1af525cc3ad52ee60ba8359669
 - name: github.com/mattn/go-runewidth
-  version: d6bea18f789704b5f83375793155289da36a3c7f
+  version: 737072b4e32b7a5018b4a7125da8d12de90e8045
 - name: github.com/nsf/termbox-go
-  version: 0723e7c3d0a317dea811f0fbe4d6edd81908c971
+  version: abe82ce5fb7a42fbd6784a5ceb71aff977e09ed8
 - name: github.com/pkg/errors
-  version: 01fa4104b9c248c8945d14d9f128454d5b28d595
+  version: 645ef00459ed84a119197bfb8d8205042c6df63d
 testImports: []

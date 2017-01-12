@@ -29,7 +29,7 @@ type KeyHandler struct {
 //  │ │ │ │
 //  └─┴─┴─┘
 type Grid struct {
-	// Dimentions.
+	// Dimensions.
 	Height int
 	Width  int
 
@@ -70,7 +70,7 @@ func (g *Grid) RedrawAll() error {
 		return errors.Wrap(err, "error clearing the terminal")
 	}
 
-	// Get the current terminal dimentions.
+	// Get the current terminal dimensions.
 	w, h := termbox.Size()
 
 	// Make sure we have enough space.
@@ -130,7 +130,7 @@ func (g *Grid) RedrawAll() error {
 	termbox.SetCell(j, i+g.HeaderHeight, '┘', defCol, defCol)
 
 	// Flush.
-	termbox.Flush()
+	_ = termbox.Flush()
 	return nil
 }
 
@@ -138,7 +138,7 @@ func (g *Grid) RedrawAll() error {
 // x and y are Cells, not absolute.
 func (g *Grid) SetCursor(x, y int) {
 	termbox.SetCursor(1+x*2, g.HeaderHeight+1+2*y)
-	termbox.Flush()
+	_ = termbox.Flush()
 }
 
 // RegisterKeyHandler adds a handler for the given key.
@@ -170,7 +170,7 @@ mainloop:
 		}
 
 		termbox.SetCursor(0, 1)
-		termbox.Flush()
+		_ = termbox.Flush()
 
 		g.HeaderFct(g)
 
@@ -208,7 +208,7 @@ func (g *Grid) Close() error {
 // SetCursorOrigin sets the cursor back to 0,0 to display the header.
 func (g *Grid) SetCursorOrigin() {
 	termbox.SetCursor(0, 0)
-	termbox.Flush()
+	_ = termbox.Flush()
 }
 
 // ClearHeader zero out the header and reset the cursor to 0,0.

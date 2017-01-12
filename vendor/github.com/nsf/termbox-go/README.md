@@ -23,6 +23,8 @@ There are also some interesting projects using termbox-go:
  - [pxl](https://github.com/ichinaski/pxl) displays images in the terminal.
  - [snake-game](https://github.com/DyegoCosta/snake-game) is an implementation of the Snake game.
  - [gone](https://github.com/guillaumebreton/gone) is a CLI pomodoro® timer.
+ - [Spoof.go](https://github.com/sabey/spoofgo) controllable movement spoofing from the cli
+ - [lf](https://github.com/gokcehan/lf) is a terminal file manager
 
 ### API reference
 [godoc.org/github.com/nsf/termbox-go](http://godoc.org/github.com/nsf/termbox-go)

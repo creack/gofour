@@ -1,13 +1,13 @@
 package: github.com/creack/gofour
-homepage: https://github.com/creack/gofour
-license: MIT
-description: Simple connect four game implemented in Go.
-owners:
-  - name: Guillaume J. Charmes
-    email: guillaume@charmes.net
-    homepage: http://blog.charmes.net
 import:
+- package: github.com/creack/ehttp
+  version: ^0.4.3
 - package: github.com/creack/gogrid
+  version: ^0.0.2
+- package: github.com/creack/httpreq
+  version: ^0.1.1
+- package: github.com/creack/uuid
+  version: ^1.1.1
 - package: github.com/nsf/termbox-go
 - package: github.com/pkg/errors
-  version: ~0.7.0
+  version: ^0.8.0

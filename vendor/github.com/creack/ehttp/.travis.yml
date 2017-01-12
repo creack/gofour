@@ -1,0 +1,21 @@
+sudo: false
+
+language: go
+
+go:
+  - 1.5
+  - 1.6
+  - tip
+
+before_install:
+  - go get -t -v ./...
+  - go get github.com/axw/gocov/gocov
+  - go get github.com/mattn/goveralls
+  - go get golang.org/x/tools/cmd/cover
+
+script:
+  - go test -v -covermode=count -coverprofile=profile.cov .
+  - go test -v -covermode=count -coverprofile=profile2.cov ./ehttprouter
+  - cat profile2.cov | tail -n +2 >> profile.cov
+  - go tool cover -func profile.cov
+  - goveralls -coverprofile=profile.cov -service=travis-ci
