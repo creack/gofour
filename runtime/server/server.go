@@ -198,13 +198,18 @@ func (r *Runtime) PlayMove(w http.ResponseWriter, req *http.Request) error {
 		return ehttp.NewError(http.StatusBadRequest, err)
 	}
 
-	data := PlayMoveReq{}
+	data := PlayMoveReq{
+		Column: -1,
+	}
 	if err := (httpreq.ParsingMap{
 		{Field: "game_id", Fct: httpreq.ToString, Dest: &data.GameID},
 		{Field: "player_name", Fct: httpreq.ToString, Dest: &data.PlayerName},
 		{Field: "col", Fct: httpreq.ToInt, Dest: &data.Column},
 	}.Parse(req.Form)); err != nil {
 		return ehttp.NewError(http.StatusBadRequest, err)
+	}
+	if data.Column == -1 {
+		return ehttp.NewErrorf(http.StatusBadRequest, "missing column to be played")
 	}
 	if data.PlayerName == "" {
 		return ehttp.NewErrorf(http.StatusBadRequest, "missing player name")
