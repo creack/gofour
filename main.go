@@ -16,11 +16,11 @@ import (
 
 func main() {
 	var (
-		cols     = flag.Int("cols", 7, "number of columns")
-		rows     = flag.Int("rows", 6, "number of rows")
-		nPlayers = flag.Int("p", 2, fmt.Sprintf("number of players. (max: %d)", len(engine.AvailablePlayers)))
-		nWin     = flag.Int("w", 4, "number of consecutive color to win")
-		mode     = flag.String("mode", "terminal", "Game mode. Values: [terminal, text]")
+		cols     = flag.Int("cols", engine.DefaultCols, "number of columns")
+		rows     = flag.Int("rows", engine.DefaultRows, "number of rows")
+		nPlayers = flag.Int("p", engine.DefaultNPlayers, fmt.Sprintf("number of players. (max: %d)", len(engine.AvailablePlayers)))
+		nWin     = flag.Int("w", engine.DefaultNWin, "number of consecutive color to win")
+		mode     = flag.String("mode", engine.DefaultMode, "Game mode. Values: [terminal, text]")
 	)
 	flag.Parse()
 
@@ -37,7 +37,7 @@ func main() {
 	if err := run.Init(four); err != nil {
 		log.Fatal(err)
 	}
-	defer func() { _ = run.Close() }()
+	defer func() { _ = run.Close() }() // Best effort.
 
 	if err := run.Run(); err != nil {
 		log.Fatal(err)

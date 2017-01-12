@@ -99,7 +99,7 @@ func (r *Runtime) Run() error {
 			goto start
 		}
 
-		ret, err := r.four.PlayerMove(x)
+		ret, err := r.four.PlayerMove(r.four.CurPlayer, x)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%s\n", err)
 			if err := errors.Cause(err); err == engine.ErrInvalidMove {

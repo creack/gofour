@@ -67,7 +67,7 @@ func (tf *Runtime) toggleHandler(g *gogrid.Grid) {
 
 	g.ClearHeader()
 	curPlayer := tf.four.CurPlayer
-	ret, err := tf.four.PlayerMove(tf.cursorX)
+	ret, err := tf.four.PlayerMove(tf.four.CurPlayer, tf.cursorX)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", err)
 		g.SetCursor(0, 0)
