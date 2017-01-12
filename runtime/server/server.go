@@ -112,13 +112,12 @@ func (r *Runtime) ListGames(w http.ResponseWriter, req *http.Request) error {
 // AttachGame is the http endpoint to attach to a game.
 // This endpoint will send one message each time the game changes state until
 // the game is finished.
-// <pre>
+//
 // Method: GET
 // Query String:
 // - game_id: string, game uuid to attach to.
 // Response:
 // - JSON object of engine.Four. One entry per state change.
-// </pre>
 func (r *Runtime) AttachGame(w http.ResponseWriter, req *http.Request) error {
 	if err := req.ParseForm(); err != nil {
 		return ehttp.NewError(http.StatusBadRequest, err)
