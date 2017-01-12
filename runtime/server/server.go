@@ -32,6 +32,15 @@ type CreateGameReq struct {
 }
 
 // CreateGame is the http endpoint handling the game creation.
+//
+// Method: GET
+// Query String:
+// - cols:     int, columns count of the grid.
+// - rows:     int, rows count of the grid.
+// - nplayers: int, number of players allowed in the game.
+// - nwin:     int, number of consecutive field to win.
+// Response:
+// - json formatted UUID of the new game.
 func (r *Runtime) CreateGame(w http.ResponseWriter, req *http.Request) error {
 	if err := req.ParseForm(); err != nil {
 		return ehttp.NewError(http.StatusBadRequest, err)
@@ -74,6 +83,10 @@ type ListGameResp struct {
 }
 
 // ListGames is the http endpoint returning the list of games.
+//
+// Method: GET
+// Response:
+// - JSON array of ListGameResp.
 func (r *Runtime) ListGames(w http.ResponseWriter, req *http.Request) error {
 	r.RLock()
 	ret := make([]ListGameResp, 0, len(r.games))
@@ -99,6 +112,12 @@ func (r *Runtime) ListGames(w http.ResponseWriter, req *http.Request) error {
 // AttachGame is the http endpoint to attach to a game.
 // This endpoint will send one message each time the game changes state until
 // the game is finished.
+//
+// Method: GET
+// Query String:
+// - game_id: string, game uuid to attach to.
+// Response:
+// - JSON object of engine.Four. One entry per state change.
 func (r *Runtime) AttachGame(w http.ResponseWriter, req *http.Request) error {
 	if err := req.ParseForm(); err != nil {
 		return ehttp.NewError(http.StatusBadRequest, err)
@@ -144,6 +163,11 @@ type JoinGameReq struct {
 }
 
 // JoinGame is the http endpoint to join a game.
+//
+// Method: GET
+// Query String:
+// - game_id:     string, uuid of the game to join.
+// - player_name: string, arbitrary player name.
 func (r *Runtime) JoinGame(w http.ResponseWriter, req *http.Request) error {
 	if err := req.ParseForm(); err != nil {
 		return ehttp.NewError(http.StatusBadRequest, err)
@@ -193,6 +217,12 @@ type PlayMoveReq struct {
 }
 
 // PlayMove is the http endpoint to submit a move.
+//
+// Method: GET
+// Query String:
+// - game_id:     string, uuid of the target game.
+// - player_name: string, name of the player, must have joined the game.
+// - col:         int,    0 indexed column number to play.
 func (r *Runtime) PlayMove(w http.ResponseWriter, req *http.Request) error {
 	if err := req.ParseForm(); err != nil {
 		return ehttp.NewError(http.StatusBadRequest, err)
